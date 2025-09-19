@@ -1,0 +1,48 @@
+# azure-pipelines.yml
+
+trigger:
+  branches:
+    include:
+      - main
+      - feature/*
+  tags:
+    include:
+      - "R*"   # Capture R* tags, will validate format later
+
+pr: none   # Do not run for PRs
+
+stages:
+# ---------------- CI Stage ----------------
+- stage: CI
+  displayName: "Build & Test"
+  jobs:
+  - job: Build
+    displayName: "CI Job"
+    steps:
+    - script: echo "✅ Running CI for $(Build.SourceBranch)"
+      displayName: "Build & Test"
+
+# ---------------- CD Stage ----------------
+- stage: CD
+  displayName: "Release Deployment"
+  dependsOn: CI
+  # Only proceed if this was triggered by a tag starting with R
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/R'))
+  jobs:
+  - job: Deploy
+    displayName: "CD Job"
+    steps:
+    # Validate the tag format before deployment
+    - powershell: |
+        $tag = "$(Build.SourceBranchName)"
+        if ($tag -match '^R[0-9]+\.[0-9]+\.[0-9]+$') {
+          Write-Host "✅ Valid release tag: $tag"
+        } else {
+          Write-Error "❌ Invalid tag format: $tag. Expected R<major>.<minor>.<patch>"
+          exit 1
+        }
+      displayName: "Validate Release Tag"
+
+    - script: echo "🚀 Deploying release for $(Build.SourceBranchName)"
+      displayName: "Deploy to Production"
+      condition: succeeded()
