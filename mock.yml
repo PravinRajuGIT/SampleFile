@@ -1,0 +1,33 @@
+trigger:
+  branches:
+    include:
+      - main
+      - feature/*
+  tags:
+    include:
+      - R*        # Matches tags like R1.0.0
+
+pr: none   # disable PR triggers
+
+# Stages
+stages:
+- stage: CI
+  displayName: "Build and Test"
+  jobs:
+  - job: Build
+    steps:
+      - script: echo "Running CI for $(Build.SourceBranch)"
+        displayName: "CI Job"
+
+- stage: CD
+  displayName: "Deploy Stage"
+  dependsOn: CI
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/R'))
+  jobs:
+  - job: Deploy
+    steps:
+      - script: echo "Running CD for tag $(Build.SourceBranchName)"
+        displayName: "CD Job"
+
+
+# This version of script workss.
